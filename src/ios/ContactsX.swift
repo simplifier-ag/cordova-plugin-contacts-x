@@ -93,6 +93,10 @@ import ContactsUI
         let result: CDVPluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: contactResult);
         self.commandDelegate.send(result, callbackId: self._callbackId);
     }
+    
+    func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+        self.returnError(error: ErrorCodes.UnknownError);
+    }
 
     @objc(save:)
     func saveOrModify(command: CDVInvokedUrlCommand) {
