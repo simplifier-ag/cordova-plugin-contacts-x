@@ -27,6 +27,7 @@
         <source-file src="src/android/ContactsX.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXErrorCodes.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXFindOptions.java" target-dir="src/de/einfachhans/ContactsX"/>
+        <framework src="src/android/build.gradle" custom="true" type="gradleReference"/>
     </platform>
     <platform name="ios">
         <config-file parent="/*" target="config.xml">
