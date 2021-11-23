@@ -65,6 +65,9 @@ import ContactsUI
         if(options.emails) {
             keysToFetch.append(CNContactEmailAddressesKey);
         }
+        if(options.addresses) {
+            keysToFetch.append(CNContactPostalAddressesKey);
+        }
         return keysToFetch;
     }
 
@@ -86,7 +89,8 @@ import ContactsUI
     func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
         let fields: NSDictionary = [
             "phoneNumbers": true,
-            "emails": true
+            "emails": true,
+            "addresses": true
         ];
         let options = ContactsXOptions(options: ["fields": fields]);
         let contactResult = ContactX(contact: contact, options: options).getJson() as! [String : Any];
@@ -154,6 +158,18 @@ import ContactsUI
                 return CNLabeledValue<NSString>(label: ContactsX.mapStringToLabel(string: ob.type), value: ob.value as NSString);
             };
         }
+        if(contact.addresses != nil) {
+            newContact.postalAddresses = contact.addresses!.map{ (ob: ContactXAddressOptions) -> CNLabeledValue<CNPostalAddress> in
+                let postalAddress = CNMutablePostalAddress();
+                postalAddress.street = ob.streetAddress;
+                postalAddress.city = ob.locality;
+                postalAddress.state = ob.region;
+                postalAddress.postalCode = ob.postalCode;
+                postalAddress.country = ob.country;
+                
+                return CNLabeledValue<CNPostalAddress>(label: ContactsX.mapStringToLabel(string: ob.type), value: postalAddress);
+            };
+        }
 
         let store = CNContactStore();
         let saveRequest = CNSaveRequest();
@@ -217,6 +233,32 @@ import ContactsUI
                 editContact.emailAddresses = newMails;
             }
         }
+        
+        if(contact.addresses != nil) {
+            if(contact.addresses!.count == 0) {
+                editContact.postalAddresses = [];
+            } else {
+                var newAddresses: [CNLabeledValue<CNPostalAddress>] = [];
+                outer: for newAddress in contact.addresses! {
+                    let tmpAddress = CNMutablePostalAddress();
+                    tmpAddress.street = newAddress.streetAddress;
+                    tmpAddress.city = newAddress.locality;
+                    tmpAddress.state = newAddress.region;
+                    tmpAddress.postalCode = newAddress.postalCode;
+                    tmpAddress.country = newAddress.country;
+
+                    for address in editContact.postalAddresses {
+                        if (address.identifier == newAddress.id!) {
+
+                            newAddresses.append(address.settingLabel(ContactsX.mapStringToLabel(string: newAddress.type), value: tmpAddress));
+                            continue outer;
+                        }
+                    }
+                    newAddresses.append(CNLabeledValue(label: ContactsX.mapStringToLabel(string: newAddress.type), value: tmpAddress));
+                }
+                editContact.postalAddresses = newAddresses;
+            }
+        }
 
         let store = CNContactStore();
         let saveRequest = CNSaveRequest();
@@ -237,7 +279,8 @@ import ContactsUI
         let options = ContactsXOptions.init(options: [
             "fields": [
                 "phoneNumbers": true,
-                "emails": true
+                "emails": true,
+                "addresses": true
             ]
         ]);
         let keysToFetch = self.getKeysToFetch(options: options);

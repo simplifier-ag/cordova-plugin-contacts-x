@@ -5,6 +5,7 @@ class ContactsXOptions {
     var familyName: Bool = true;
     var phoneNumbers: Bool = false;
     var emails: Bool = false;
+    var addresses: Bool = false;
 
     init(options: NSDictionary?) {
         if(options != nil) {
@@ -22,6 +23,7 @@ class ContactsXOptions {
         familyName = fields.value(forKey: "familyName") as? Bool ?? true;
         phoneNumbers = fields.value(forKey: "phoneNumbers") as? Bool ?? false;
         emails = fields.value(forKey: "emails") as? Bool ?? false;
+        addresses = fields.value(forKey: "addresses") as? Bool ?? false;
     }
 
 }
@@ -33,6 +35,7 @@ class ContactXOptions {
     var familyName: String? = nil;
     var phoneNumbers: [ContactXValueTypeOptions]? = nil;
     var emails: [ContactXValueTypeOptions]? = nil;
+    var addresses: [ContactXAddressOptions]? = nil
     
     init(options: NSDictionary?) {
         if(options != nil) {
@@ -47,6 +50,10 @@ class ContactXOptions {
             let emailsArray = options?.value(forKey: "emails") as? [NSDictionary];
             if(emailsArray != nil) {
                 emails = self.parseEmails(array: emailsArray!);
+            }
+            let addressArray = options?.value(forKey: "addresses") as? [NSDictionary];
+            if(addressArray != nil) {
+                addresses = self.parseAddresses(array: addressArray!);
             }
         }
     }
@@ -72,6 +79,22 @@ class ContactXOptions {
         }
         return mails;
     }
+    
+    private func parseAddresses(array: [NSDictionary]) -> [ContactXAddressOptions] {
+        var addresses: [ContactXAddressOptions] = [];
+        for addressObject in array {
+            let finalAddress = ContactXAddressOptions.init(options: addressObject);
+            if(finalAddress.type != ""
+               && (finalAddress.streetAddress != ""
+                   || finalAddress.locality != ""
+                   || finalAddress.region != ""
+                   || finalAddress.postalCode != ""
+                   || finalAddress.country != "")) {
+                addresses.append(finalAddress);
+            }
+        }
+        return addresses;
+    }
 }
 
 class ContactXValueTypeOptions {
@@ -83,5 +106,25 @@ class ContactXValueTypeOptions {
         id = options.value(forKey: "id") as? String;
         type = options.value(forKey: "type") as? String ?? "";
         value = options.value(forKey: "value") as? String ?? "";
+    }
+}
+
+class ContactXAddressOptions {
+    var id: String? = nil;
+    var type: String;
+    var streetAddress: String;
+    var locality: String;
+    var region: String;
+    var postalCode: String;
+    var country: String;
+    
+    init(options: NSDictionary) {
+        id = options.value(forKey: "id") as? String;
+        type = options.value(forKey: "type") as? String ?? "";
+        streetAddress = options.value(forKey: "streetAddress") as? String ?? "";
+        locality = options.value(forKey: "locality") as? String ?? "";
+        region = options.value(forKey: "region") as? String ?? "";
+        postalCode = options.value(forKey: "postalCode") as? String ?? "";
+        country = options.value(forKey: "country") as? String ?? "";
     }
 }
