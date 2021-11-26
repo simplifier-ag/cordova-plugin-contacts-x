@@ -99,7 +99,7 @@ import ContactsUI
     }
     
     func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
-        self.returnError(error: ErrorCodes.UnknownError);
+        self.returnError(error: ErrorCodes.CanceledAction);
     }
 
     @objc(save:)
@@ -430,5 +430,6 @@ enum ErrorCodes:NSNumber {
     case UnsupportedAction = 1
     case WrongJsonObject = 2
     case PermissionDenied = 3
+    case CanceledAction = 4
     case UnknownError = 10
 }
