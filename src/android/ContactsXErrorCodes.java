@@ -4,6 +4,7 @@ public enum ContactsXErrorCodes {
     UnsupportedAction(1),
     WrongJsonObject(2),
     PermissionDenied(3),
+    CanceledAction(4),
     UnknownError(10);
 
     public final int value;
