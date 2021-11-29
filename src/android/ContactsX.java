@@ -14,6 +14,8 @@ import android.net.Uri;
 import android.os.RemoteException;
 import android.provider.ContactsContract;
 
+import androidx.annotation.Nullable;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.LOG;
@@ -36,8 +38,6 @@ import contacts.core.WhereKt;
 import contacts.core.entities.Address;
 import contacts.core.entities.Contact;
 import contacts.core.entities.Email;
-import contacts.core.entities.MutableName;
-import contacts.core.entities.MutableRawContact;
 import contacts.core.entities.Name;
 import contacts.core.entities.Phone;
 import contacts.core.entities.RawContact;
@@ -380,7 +380,7 @@ public class ContactsX extends CordovaPlugin {
         }
 
         String id = getJsonString(contact, "id");
-        if (id == null || id.isEmpty()) {
+        if (id == null) {
             // Create new contact
             return newContact(contact, accountType, accountName);
         } else {
@@ -404,7 +404,7 @@ public class ContactsX extends CordovaPlugin {
         String firstName = getJsonString(contact, "firstName");
         String middleName = getJsonString(contact, "middleName");
         String familyName = getJsonString(contact, "familyName");
-        if (!displayName.isEmpty() || !firstName.isEmpty() || !middleName.isEmpty() || !familyName.isEmpty()) {
+        if (displayName != null || firstName != null || middleName != null || familyName != null) {
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
@@ -509,23 +509,22 @@ public class ContactsX extends CordovaPlugin {
         String firstName = getJsonString(contact, "firstName");
         String middleName = getJsonString(contact, "middleName");
         String familyName = getJsonString(contact, "familyName");
-        if (!displayName.isEmpty() || !firstName.isEmpty() || !middleName.isEmpty() || !familyName.isEmpty()) {
+        if (displayName != null || firstName != null || middleName != null || familyName != null) {
             ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                     .withSelection(ContactsContract.Data.CONTACT_ID + "=? AND " +
                                     ContactsContract.Data.MIMETYPE + "=?",
                             new String[]{id, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE});
 
-            if (!displayName.isEmpty()) {
+            if (displayName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, displayName);
             }
-
-            if (!familyName.isEmpty()) {
+            if (familyName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME, familyName);
             }
-            if (!middleName.isEmpty()) {
+            if (middleName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME, middleName);
             }
-            if (!firstName.isEmpty()) {
+            if (firstName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, firstName);
             }
 
@@ -550,7 +549,7 @@ public class ContactsX extends CordovaPlugin {
                     JSONObject phone = (JSONObject) phones.get(i);
                     String phoneId = getJsonString(phone, "id");
                     // This is a new phone so do a DB insert
-                    if (phoneId.isEmpty()) {
+                    if (phoneId == null) {
                         ContentValues contentValues = new ContentValues();
                         contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
@@ -596,7 +595,7 @@ public class ContactsX extends CordovaPlugin {
                     JSONObject email = (JSONObject) emails.get(i);
                     String emailId = getJsonString(email, "id");
                     // This is a new email so do a DB insert
-                    if (emailId.isEmpty()) {
+                    if (emailId == null) {
                         ContentValues contentValues = new ContentValues();
                         contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
@@ -610,7 +609,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is an existing email so do a DB update
                     else {
                         String emailValue = getJsonString(email, "value");
-                        if (!emailValue.isEmpty()) {
+                        if (emailValue != null) {
                             ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(ContactsContract.CommonDataKinds.Email._ID + "=? AND " +
                                                     ContactsContract.Data.MIMETYPE + "=?",
@@ -651,7 +650,7 @@ public class ContactsX extends CordovaPlugin {
                     JSONObject address = (JSONObject) addresses.get(i);
                     String addressId = getJsonString(address, "id");
                     // This is a new email so do a DB insert
-                    if (addressId.isEmpty()) {
+                    if (addressId != null) {
                         ContentValues contentValues = new ContentValues();
                         contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE);
@@ -668,11 +667,11 @@ public class ContactsX extends CordovaPlugin {
                     }
                     // This is an existing address so do a DB update
                     else {
-                        if (!getJsonString(address, "streetAddress").isEmpty()
-                                || !getJsonString(address, "locality").isEmpty()
-                                || !getJsonString(address, "region").isEmpty()
-                                || !getJsonString(address, "postalCode").isEmpty()
-                                || !getJsonString(address, "country").isEmpty()) {
+                        if (getJsonString(address, "streetAddress") != null
+                                || getJsonString(address, "locality") != null
+                                || getJsonString(address, "region") != null
+                                || getJsonString(address, "postalCode") != null
+                                || getJsonString(address, "country") != null) {
                             ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(ContactsContract.CommonDataKinds.StructuredPostal._ID + "=? AND " +
                                                     ContactsContract.Data.MIMETYPE + "=?",
@@ -776,9 +775,9 @@ public class ContactsX extends CordovaPlugin {
     }
 
     // Helper
-
+    @Nullable
     private String getJsonString(JSONObject obj, String property) {
-        String value = "";
+        String value = null;
         try {
             if (obj != null) {
                 value = obj.getString(property);
@@ -786,7 +785,12 @@ public class ContactsX extends CordovaPlugin {
         } catch (JSONException e) {
             LOG.d(LOG_TAG, "Could not get = " + e.getMessage());
         }
-        return value;
+
+        if (value != null) {
+            return value.isEmpty() ? null : value;
+        }
+
+        return null;
     }
 
     /**

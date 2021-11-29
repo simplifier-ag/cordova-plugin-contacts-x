@@ -1,7 +1,5 @@
 var exec = require('cordova/exec');
 
-var exec = require('cordova/exec');
-
 var contactsX = {
     ErrorCodes: {
         UnsupportedAction: 1,
@@ -15,7 +13,6 @@ var contactsX = {
         window.ContactsX._checkReadPermission(function () {
             exec(success, error, 'ContactsX', 'find', [options]);
         }, error);
-
     },
 
     pick: function (success, error) {
