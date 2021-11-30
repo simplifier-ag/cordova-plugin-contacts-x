@@ -120,10 +120,15 @@ import ContactsUI
             let contactOptions = ContactXOptions.init(options: tmpContactOptions);
 
             let retId: String?;
-            if(contactOptions.id == nil) {
-                retId = self.saveNewContact(contact: contactOptions);
-            } else {
+            
+            if let id = contactOptions.id {
+                if self.findById(id: id) == nil {
+                    self.returnError(error: ErrorCodes.NotFound)
+                    return
+                }
                 retId = self.modifyContact(contact: contactOptions);
+            } else {
+                retId = self.saveNewContact(contact: contactOptions);
             }
 
             if(retId != nil) {
@@ -188,7 +193,10 @@ import ContactsUI
 
     func modifyContact(contact: ContactXOptions) -> String? {
         let existingContact = self.findById(id: contact.id!);
-        let editContact = existingContact!.contact.mutableCopy() as! CNMutableContact;
+        
+        guard let editContact = existingContact?.contact.mutableCopy() as? CNMutableContact else {
+            return nil
+        }
 
         if(contact.firstName != nil) {
             editContact.givenName = contact.firstName!;
@@ -431,5 +439,6 @@ enum ErrorCodes:NSNumber {
     case WrongJsonObject = 2
     case PermissionDenied = 3
     case CanceledAction = 4
+    case NotFound = 5
     case UnknownError = 10
 }
