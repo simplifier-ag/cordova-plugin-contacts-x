@@ -380,13 +380,17 @@ public class ContactsX extends CordovaPlugin {
         }
 
         String id = getJsonString(contact, "id");
-        if (id == null) {
-            // Create new contact
-            return newContact(contact, accountType, accountName);
-        } else {
+        if (id != null) {
+            if (getContactById(id) == null) {
+                return null;
+            }
+
             // Modify existing contact
             return modifyContact(id, contact, accountType, accountName);
         }
+
+        // Create new contact
+        return newContact(contact, accountType, accountName);
     }
 
     private String newContact(JSONObject contact, String accountType, String accountName) {
@@ -491,10 +495,6 @@ public class ContactsX extends CordovaPlugin {
     }
 
     private String modifyContact(String id, JSONObject contact, String accountType, String accountName) {
-        // Get the RAW_CONTACT_ID which is needed to insert new values in an already existing contact.
-        // But not needed to update existing values.
-        String rawId = getJsonString(contact, "rawId");
-
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
@@ -540,7 +540,7 @@ public class ContactsX extends CordovaPlugin {
                 ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
                         .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
-                                new String[]{rawId, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE})
+                                new String[]{id, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE})
                         .build());
             }
             // Modify or add a phone
@@ -551,7 +551,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is a new phone so do a DB insert
                     if (phoneId == null) {
                         ContentValues contentValues = new ContentValues();
-                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
                         contentValues.put(ContactsContract.CommonDataKinds.Phone.NUMBER, getJsonString(phone, "value"));
                         contentValues.put(ContactsContract.CommonDataKinds.Phone.TYPE, getPhoneType(getJsonString(phone, "type")));
@@ -586,7 +586,7 @@ public class ContactsX extends CordovaPlugin {
                 ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
                         .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
-                                new String[]{rawId, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE})
+                                new String[]{id, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE})
                         .build());
             }
             // Modify or add a email
@@ -597,7 +597,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is a new email so do a DB insert
                     if (emailId == null) {
                         ContentValues contentValues = new ContentValues();
-                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
                         contentValues.put(ContactsContract.CommonDataKinds.Email.DATA, getJsonString(email, "value"));
                         contentValues.put(ContactsContract.CommonDataKinds.Email.TYPE, getMailType(getJsonString(email, "type")));
@@ -641,7 +641,7 @@ public class ContactsX extends CordovaPlugin {
                 ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
                         .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
-                                new String[]{rawId, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE})
+                                new String[]{id, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE})
                         .build());
             }
             // Modify or add a address
@@ -650,9 +650,9 @@ public class ContactsX extends CordovaPlugin {
                     JSONObject address = (JSONObject) addresses.get(i);
                     String addressId = getJsonString(address, "id");
                     // This is a new email so do a DB insert
-                    if (addressId != null) {
+                    if (addressId == null) {
                         ContentValues contentValues = new ContentValues();
-                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE);
                         contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.TYPE, getAddressType(getJsonString(address, "type")));
                         contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.LABEL, getJsonString(address, "type"));
@@ -709,7 +709,7 @@ public class ContactsX extends CordovaPlugin {
 
         // if the save was a success return the contact ID
         if (retVal) {
-            return rawId;
+            return id;
         } else {
             return null;
         }
