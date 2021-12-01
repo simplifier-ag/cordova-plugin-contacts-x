@@ -239,7 +239,6 @@ This Method returns a single [ContactX](#contactx) object.
 ## save
 
 Save or update a contact. If you provide the `id` the contact will be updated.  
-Warning: Creating a duplicated contact (same firstName + familyName) can result in modifying the existing contact instead of creating a new one.
 
 ### Parameters:
 
@@ -268,6 +267,10 @@ window.ContactsX.save(
 ### SuccessType:
 
 This Method returns the final [ContactX](#contactx) object.
+
+### Quirks
+
+On Android creating a duplicated contact (same firstName + familyName) can result in modifying the existing contact instead of creating a new one.
 
 ## delete
 

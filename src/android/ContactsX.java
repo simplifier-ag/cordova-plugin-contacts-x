@@ -282,6 +282,7 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
+    @Nullable
     private JSONObject getContactByQuery(Query query) {
         Map<String, Object> fields = new HashMap<>();
         fields.put("phoneNumbers", true);
@@ -302,6 +303,7 @@ public class ContactsX extends CordovaPlugin {
         return null;
     }
 
+    @Nullable
     private JSONObject getContactById(String id) {
         Query dataQuery = getContactsFactory()
                 .query()
@@ -342,6 +344,7 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
+    @Nullable
     private String performSave(JSONObject contact) {
         AccountManager mgr = AccountManager.get(this.cordova.getActivity());
         Account[] accounts = mgr.getAccounts();
@@ -393,6 +396,7 @@ public class ContactsX extends CordovaPlugin {
         return newContact(contact, accountType, accountName);
     }
 
+    @Nullable
     private String newContact(JSONObject contact, String accountType, String accountName) {
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
@@ -494,6 +498,7 @@ public class ContactsX extends CordovaPlugin {
         return newId;
     }
 
+    @Nullable
     private String modifyContact(String id, JSONObject contact, String accountType, String accountName) {
         // Create a list of attributes to add to the contact database
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
@@ -845,7 +850,6 @@ public class ContactsX extends CordovaPlugin {
     private int getAddressType(String string) {
         int type = ContactsContract.CommonDataKinds.StructuredPostal.TYPE_OTHER;
         if (string != null) {
-
             String lowerType = string.toLowerCase(Locale.getDefault());
 
             switch (lowerType) {
