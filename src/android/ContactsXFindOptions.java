@@ -10,6 +10,7 @@ public class ContactsXFindOptions {
     boolean familyName = true;
     boolean phoneNumbers;
     boolean emails;
+    boolean addresses;
 
     public ContactsXFindOptions(JSONObject options) {
         if (options != null) {
@@ -28,5 +29,6 @@ public class ContactsXFindOptions {
         this.familyName = fields.optBoolean("familyName", true);
         this.phoneNumbers = fields.optBoolean("phoneNumbers");
         this.emails = fields.optBoolean("emails");
+        this.addresses = fields.optBoolean("addresses");
     }
 }

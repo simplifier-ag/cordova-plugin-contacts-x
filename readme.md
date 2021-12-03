@@ -49,7 +49,7 @@ Please consider donating if you're using this plugin in an app that makes you mo
 ## Requirements
 
 - **cordova** `>= 9.0.0`
-- **cordova-android** `>= 9.0.0`
+- **cordova-android** `>= 10.0.0`
 - **ios** `>= 9`
 - **android** `>= 22`
 
@@ -103,6 +103,8 @@ The following Error Codes can be fired by this Plugin:
 - UnsupportedAction
 - WrongJsonObject
 - PermissionDenied
+- CanceledAction
+- NotFound
 - UnknownError
 
 They can be accessed over `window.ContactsX.ErrorCodes` and are present in the TypeScript definition too of course. 
@@ -195,6 +197,7 @@ Find Contacts by given options. If you don't set a field to true, it is not incl
         - familyName (boolean) - *default: true*
         - phoneNumbers (boolean)
         - emails (boolean)
+        - addresses (boolean)
 
 ```js
 window.ContactsX.find(function(success) {
@@ -235,7 +238,7 @@ This Method returns a single [ContactX](#contactx) object.
 
 ## save
 
-Save or update a contact. If you provide the `id` the contact will be updated. (remember to add `rawId` on android also).
+Save or update a contact. If you provide the `id` the contact will be updated.  
 
 ### Parameters:
 
@@ -264,6 +267,10 @@ window.ContactsX.save(
 ### SuccessType:
 
 This Method returns the final [ContactX](#contactx) object.
+
+### Quirks
+
+On Android creating a duplicated contact (same firstName + familyName) can result in modifying the existing contact instead of creating a new one.
 
 ## delete
 
@@ -295,6 +302,7 @@ window.ContactsX.delete("some_id",
 - familyName (string)
 - phoneNumbers ([ContactXPhoneNumber](contactxphonenumber)[])
 - emails ([ContactXEmail](#contactxemail)[])
+- addresses ([ContactXAddress](#contactxaddress)[])
 
 ## ContactXPhoneNumber
 - id (string)
@@ -305,6 +313,15 @@ window.ContactsX.delete("some_id",
 - id (string)
 - type (string)
 - value (string)
+
+## ContactXAddress
+- id (string)
+- type (string)
+- street (string)
+- locality (string)
+- region (string)
+- postalCode (string)
+- country (string)
 
 # Changelog
 

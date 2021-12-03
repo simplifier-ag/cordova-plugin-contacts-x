@@ -6,7 +6,6 @@ import android.accounts.AccountManager;
 import android.app.Activity;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
-import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.OperationApplicationException;
@@ -15,9 +14,10 @@ import android.net.Uri;
 import android.os.RemoteException;
 import android.provider.ContactsContract;
 
-import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.CallbackContext;
+import androidx.annotation.Nullable;
 
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.LOG;
 import org.apache.cordova.PermissionHelper;
 import org.json.JSONArray;
@@ -26,8 +26,21 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import contacts.core.Contacts;
+import contacts.core.ContactsFactory;
+import contacts.core.Fields;
+import contacts.core.Query;
+import contacts.core.WhereKt;
+import contacts.core.entities.Address;
+import contacts.core.entities.Contact;
+import contacts.core.entities.Email;
+import contacts.core.entities.Name;
+import contacts.core.entities.Phone;
+import contacts.core.entities.RawContact;
 
 /**
  * This class echoes a string called from JavaScript.
@@ -44,6 +57,8 @@ public class ContactsX extends CordovaPlugin {
 
     public static final int REQ_CODE_PERMISSIONS = 0;
     public static final int REQ_CODE_PICK = 2;
+
+    private Contacts contactsFactory = null;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
@@ -94,25 +109,27 @@ public class ContactsX extends CordovaPlugin {
     public void onActivityResult(int requestCode, int resultCode, final Intent intent) {
         if (requestCode == REQ_CODE_PICK) {
             if (resultCode == Activity.RESULT_OK) {
-                String contactId = intent.getData().getLastPathSegment();
-                Cursor c = this.cordova.getActivity().getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
-                        new String[]{ContactsContract.RawContacts._ID}, ContactsContract.RawContacts.CONTACT_ID + " = " + contactId, null, null);
-                if (!c.moveToFirst()) {
-                    returnError(ContactsXErrorCodes.UnknownError, "Error occurred while retrieving contact raw id");
-                    return;
-                }
-                String id = c.getString(c.getColumnIndex(ContactsContract.RawContacts._ID));
-                c.close();
+                final String contactId = intent.getData().getLastPathSegment();
 
-                JSONObject contact = getContactById(id);
-                if (contact != null) {
-                    this._callbackContext.success(contact);
-                } else {
-                    returnError(ContactsXErrorCodes.UnknownError);
-                }
+                this.cordova.getThreadPool().execute(() -> {
+                    Query dataQuery = getContactsFactory()
+                            .query()
+                            .where(WhereKt.equalTo(Fields.Contact.Id, contactId));
+
+                    if (dataQuery.find().size() <= 0) {
+                        returnError(ContactsXErrorCodes.UnknownError, "Error occurred while retrieving contact raw id");
+                        return;
+                    }
+
+                    JSONObject contact = getContactByQuery(dataQuery);
+                    if (contact != null) {
+                        this._callbackContext.success(contact);
+                    } else {
+                        returnError(ContactsXErrorCodes.UnknownError);
+                    }
+                });
             } else {
-                returnError(ContactsXErrorCodes.UnknownError);
-
+                returnError(ContactsXErrorCodes.CanceledAction);
             }
         }
     }
@@ -126,185 +143,136 @@ public class ContactsX extends CordovaPlugin {
         ContactsXFindOptions options = new ContactsXFindOptions(args.optJSONObject(0));
 
         this.cordova.getThreadPool().execute(() -> {
+            Query dataQuery = getContactsFactory()
+                    .query();
 
-            ContentResolver contentResolver = this.cordova.getContext().getContentResolver();
-
-            ArrayList<String> projection = this.getProjection(options);
-            ArrayList<String> selectionArgs = this.getSelectionArgs(options);
-            StringBuilder questionMarks = new StringBuilder();
-            for (String s : selectionArgs) {
-                if (selectionArgs.indexOf(s) == selectionArgs.size() - 1) {
-                    questionMarks.append("?");
-                } else {
-                    questionMarks.append("?, ");
-                }
-            }
-            String selection = ContactsContract.Data.MIMETYPE + " in (" + questionMarks.toString() + ")";
-
-            Cursor contactsCursor = contentResolver.query(
-                    ContactsContract.Data.CONTENT_URI,
-                    projection.toArray(new String[0]),
-                    selection,
-                    selectionArgs.toArray(new String[0]),
-                    null
-            );
-
-            JSONArray result = null;
             try {
-                result = handleFindResult(contactsCursor, options);
-            } catch (JSONException e) {
-                this.returnError(ContactsXErrorCodes.UnknownError, e.getMessage());
+                JSONArray contacts = handleFindResult(dataQuery, options);
+                this._callbackContext.success(contacts);
+            } catch (Exception e) {
+                returnError(ContactsXErrorCodes.UnknownError, e.getMessage());
             }
-
-            this._callbackContext.success(result);
         });
     }
 
-    private ArrayList<String> getProjection(ContactsXFindOptions options) {
-        ArrayList<String> projection = new ArrayList<>();
-        projection.add(ContactsContract.Data.MIMETYPE);
-        projection.add(ContactsContract.Contacts._ID);
-        projection.add(ContactsContract.Data.CONTACT_ID);
-        projection.add(ContactsContract.Data.RAW_CONTACT_ID);
-        projection.add(ContactsContract.CommonDataKinds.Contactables.DATA);
-
-        if (options.displayName) {
-            projection.add(ContactsContract.Contacts.DISPLAY_NAME);
-        }
-        if (options.firstName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME);
-        }
-        if (options.middleName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME);
-        }
-        if (options.familyName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME);
-        }
-        if (options.emails) {
-            projection.add(ContactsContract.CommonDataKinds.Email._ID);
-            projection.add(ContactsContract.CommonDataKinds.Email.DATA);
-            projection.add(ContactsContract.CommonDataKinds.Email.TYPE);
-            projection.add(ContactsContract.CommonDataKinds.Email.LABEL);
-        }
-
-        return projection;
-    }
-
-    private ArrayList<String> getSelectionArgs(ContactsXFindOptions options) {
-        ArrayList<String> selectionArgs = new ArrayList<>();
-        if (options.phoneNumbers) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
-        }
-        if (options.emails) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
-        }
-        if (options.firstName || options.middleName || options.familyName) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE);
-        }
-
-        return selectionArgs;
-    }
-
-    private JSONArray handleFindResult(Cursor contactsCursor, ContactsXFindOptions options) throws JSONException {
-        // initialize array
+    private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
         JSONArray jsContacts = new JSONArray();
+        List<Contact> contacts = contactQuery.find();
 
-        if (contactsCursor != null && contactsCursor.getCount() > 0) {
-            HashMap<Object, JSONObject> contactsById = new HashMap<>();
+        if (contacts.size() <= 0) {
+            return jsContacts;
+        }
 
-            while (contactsCursor.moveToNext()) {
-                String contactId = contactsCursor.getString(
-                        contactsCursor.getColumnIndex(ContactsContract.Data.CONTACT_ID)
-                );
-                String rawId = contactsCursor.getString(
-                        contactsCursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
-                );
+        for (Contact contact : contacts) {
+            JSONObject jsContact = new JSONObject();
 
-                JSONObject jsContact = new JSONObject();
-
-                if (!contactsById.containsKey(contactId)) {
-                    // this contact does not yet exist in HashMap,
-                    // so put it to the HashMap
-
-                    jsContact.put("id", contactId);
-                    jsContact.put("rawId", rawId);
-                    if (options.displayName) {
-                        String displayName = contactsCursor.getString(contactsCursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                        jsContact.put("displayName", displayName);
-                    }
-                    JSONArray jsPhoneNumbers = new JSONArray();
-                    jsContact.put("phoneNumbers", jsPhoneNumbers);
-
-                    JSONArray jsEmails = new JSONArray();
-                    jsContact.put("emails", jsEmails);
-
-                    jsContacts.put(jsContact);
-                } else {
-                    jsContact = contactsById.get(contactId);
-                }
-
-                String mimeType = contactsCursor.getString(
-                        contactsCursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
-                );
-
-                assert jsContact != null;
-                switch (mimeType) {
-                    case ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE:
-                        JSONArray jsPhoneNumbers = jsContact.getJSONArray("phoneNumbers");
-                        jsPhoneNumbers.put(phoneQuery(contactsCursor));
-                        break;
-                    case ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE:
-                        JSONArray emailAddresses = jsContact.getJSONArray("emails");
-                        emailAddresses.put(emailQuery(contactsCursor));
-                        break;
-                    case ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE:
-                        try {
-                            if (options.firstName) {
-                                String firstName = contactsCursor.getString(contactsCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME));
-                                jsContact.put("firstName", firstName);
-                            }
-                            if (options.middleName) {
-                                String middleName = contactsCursor.getString(contactsCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME));
-                                jsContact.put("middleName", middleName);
-                            }
-                            if (options.familyName) {
-                                String familyName = contactsCursor.getString(contactsCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME));
-                                jsContact.put("familyName", familyName);
-                            }
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                        break;
-                }
-
-                contactsById.put(contactId, jsContact);
+            jsContact.put("id", contact.getId().toString());
+            if (options.displayName) {
+                String displayName = contact.getDisplayNamePrimary();
+                jsContact.put("displayName", displayName);
             }
 
-            contactsCursor.close();
+            try {
+                RawContact rawContact = contact.getRawContacts().get(0);
+                Name name = rawContact != null ? rawContact.getName() : null;
+                if (name != null) {
+                    if (options.firstName) {
+                        String firstName = name.getGivenName();
+                        jsContact.put("firstName", firstName);
+                    }
+                    if (options.middleName) {
+                        String middleName = name.getMiddleName();
+                        jsContact.put("middleName", middleName);
+                    }
+                    if (options.familyName) {
+                        String familyName = name.getFamilyName();
+                        jsContact.put("familyName", familyName);
+                    }
+                }
+
+            } catch (IllegalArgumentException ignored) {
+            }
+
+            if (options.phoneNumbers) {
+                jsContact.put("phoneNumbers", phoneQuery(contact));
+            }
+
+            if (options.emails) {
+                jsContact.put("emails", emailQuery(contact));
+            }
+
+            if (options.addresses) {
+                jsContact.put("addresses", addressQuery(contact));
+            }
+
+            jsContacts.put(jsContact);
         }
 
         return jsContacts;
     }
 
-    private JSONObject phoneQuery(Cursor cursor) throws JSONException {
-        JSONObject phoneNumber = new JSONObject();
-        int typeCode = cursor.getInt(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.TYPE));
-        String typeLabel = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.LABEL));
-        String type = (typeCode == ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM) ? typeLabel : getPhoneType(typeCode);
-        phoneNumber.put("id", cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone._ID)));
-        phoneNumber.put("value", cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)));
-        phoneNumber.put("type", type);
-        return phoneNumber;
+   private JSONArray phoneQuery(Contact contact) throws JSONException {
+        JSONArray phoneNumbers = new JSONArray();
+
+        for (RawContact rawContact : contact.getRawContacts()) {
+            for (Phone phoneNumber : rawContact.getPhones()) {
+                JSONObject phoneNumberObj = new JSONObject();
+                try {
+                    phoneNumberObj.put("id", phoneNumber.getId().toString());
+                    phoneNumberObj.put("value", phoneNumber.getNumber());
+                    phoneNumberObj.put("type", getPhoneType(phoneNumber.getType().getValue()));
+                    phoneNumbers.put(phoneNumberObj);
+                } catch (NullPointerException e) {
+                    LOG.e(LOG_TAG, e.getMessage(), e);
+                }
+            }
+        }
+
+        return phoneNumbers;
     }
 
-    private JSONObject emailQuery(Cursor cursor) throws JSONException {
-        JSONObject email = new JSONObject();
-        int typeCode = cursor.getInt(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.TYPE));
-        String typeLabel = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.LABEL));
-        String type = (typeCode == ContactsContract.CommonDataKinds.Email.TYPE_CUSTOM) ? typeLabel : getMailType(typeCode);
-        email.put("id", cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email._ID)));
-        email.put("value", cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.DATA)));
-        email.put("type", type);
-        return email;
+    private JSONArray emailQuery(Contact contact) throws JSONException {
+        JSONArray emails = new JSONArray();
+
+        for (RawContact rawContact : contact.getRawContacts()) {
+            for (Email email : rawContact.getEmails()) {
+                JSONObject emailObj = new JSONObject();
+                try {
+                    emailObj.put("id", email.getId().toString());
+                    emailObj.put("value", email.getAddress());
+                    emailObj.put("type", getMailType(email.getType().getValue()));
+                    emails.put(emailObj);
+                } catch (NullPointerException e) {
+                    LOG.e(LOG_TAG, e.getMessage(), e);
+                }
+            }
+        }
+
+        return emails;
+    }
+
+    private JSONArray addressQuery(Contact contact) throws JSONException {
+        JSONArray addresses = new JSONArray();
+
+        for (RawContact rawContact : contact.getRawContacts()) {
+            for (Address address : rawContact.getAddresses()) {
+                JSONObject addressObj = new JSONObject();
+                try {
+                    addressObj.put("id", address.getId().toString());
+                    addressObj.put("type", getAddressType(address.getType().getValue()));
+                    addressObj.put("streetAddress", address.getStreet());
+                    addressObj.put("locality", address.getCity());
+                    addressObj.put("region", address.getRegion());
+                    addressObj.put("postalCode", address.getPostcode());
+                    addressObj.put("country", address.getCountry());
+                    addresses.put(addressObj);
+                } catch (NullPointerException e) {
+                    LOG.e(LOG_TAG, e.getMessage(), e);
+                }
+            }
+        }
+
+        return addresses;
     }
 
     private void pick() {
@@ -314,22 +282,42 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
-    private JSONObject getContactById(String id) {
-        Cursor c = this.cordova.getActivity().getContentResolver().query(
-                ContactsContract.Data.CONTENT_URI,
-                null,
-                ContactsContract.Data.RAW_CONTACT_ID + " = ? ",
-                new String[]{id},
-                ContactsContract.Data.RAW_CONTACT_ID + " ASC");
-
+    @Nullable
+    private JSONObject getContactByQuery(Query query) {
         Map<String, Object> fields = new HashMap<>();
         fields.put("phoneNumbers", true);
         fields.put("emails", true);
+        fields.put("addresses", true);
         Map<String, Object> pickFields = new HashMap<>();
         pickFields.put("fields", fields);
 
         try {
-            JSONArray contacts = handleFindResult(c, new ContactsXFindOptions(new JSONObject(pickFields)));
+            JSONArray contacts = handleFindResult(query, new ContactsXFindOptions(new JSONObject(pickFields)));
+            if (contacts.length() == 1) {
+                return contacts.getJSONObject(0);
+            }
+        } catch (Exception e) {
+            returnError(ContactsXErrorCodes.UnknownError, e.getMessage());
+        }
+
+        return null;
+    }
+
+    @Nullable
+    private JSONObject getContactById(String id) {
+        Query dataQuery = getContactsFactory()
+                .query()
+                .where(WhereKt.equalTo(Fields.Contact.Id, id));
+
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("phoneNumbers", true);
+        fields.put("emails", true);
+        fields.put("addresses", true);
+        Map<String, Object> pickFields = new HashMap<>();
+        pickFields.put("fields", fields);
+
+        try {
+            JSONArray contacts = handleFindResult(dataQuery, new ContactsXFindOptions(new JSONObject(pickFields)));
             if (contacts.length() == 1) {
                 return contacts.getJSONObject(0);
             }
@@ -356,6 +344,7 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
+    @Nullable
     private String performSave(JSONObject contact) {
         AccountManager mgr = AccountManager.get(this.cordova.getActivity());
         Account[] accounts = mgr.getAccounts();
@@ -394,18 +383,23 @@ public class ContactsX extends CordovaPlugin {
         }
 
         String id = getJsonString(contact, "id");
-        if (id == null) {
-            // Create new contact
-            return newContact(contact, accountType, accountName);
-        } else {
+        if (id != null) {
+            if (getContactById(id) == null) {
+                return null;
+            }
+
             // Modify existing contact
             return modifyContact(id, contact, accountType, accountName);
         }
+
+        // Create new contact
+        return newContact(contact, accountType, accountName);
     }
 
+    @Nullable
     private String newContact(JSONObject contact, String accountType, String accountName) {
         // Create a list of attributes to add to the contact database
-        ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+        ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
         //Add contact type
         ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
@@ -469,6 +463,28 @@ public class ContactsX extends CordovaPlugin {
             LOG.d(LOG_TAG, "Could not get emails");
         }
 
+        // Add addresses
+        JSONArray addresses;
+        try {
+            addresses = contact.getJSONArray("addresses");
+            for (int i = 0; i < addresses.length(); i++) {
+                JSONObject address = (JSONObject) addresses.get(i);
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.STREET, getJsonString(address, "streetAddress"))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.CITY, getJsonString(address, "locality"))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.REGION, getJsonString(address, "region"))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE, getJsonString(address, "postalCode"))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY, getJsonString(address, "country"))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.TYPE, getAddressType(getJsonString(address, "type")))
+                        .withValue(ContactsContract.CommonDataKinds.StructuredPostal.LABEL, getJsonString(address, "type"))
+                        .build());
+            }
+        } catch (JSONException e) {
+            LOG.d(LOG_TAG, "Could not get addresses");
+        }
+
         String newId = null;
         //Add contact
         try {
@@ -482,13 +498,10 @@ public class ContactsX extends CordovaPlugin {
         return newId;
     }
 
+    @Nullable
     private String modifyContact(String id, JSONObject contact, String accountType, String accountName) {
-        // Get the RAW_CONTACT_ID which is needed to insert new values in an already existing contact.
-        // But not needed to update existing values.
-        String rawId = getJsonString(contact, "rawId");
-
         // Create a list of attributes to add to the contact database
-        ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+        ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
         //Add contact type
         ops.add(ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
@@ -510,7 +523,6 @@ public class ContactsX extends CordovaPlugin {
             if (displayName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, displayName);
             }
-
             if (familyName != null) {
                 builder.withValue(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME, familyName);
             }
@@ -533,7 +545,7 @@ public class ContactsX extends CordovaPlugin {
                 ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
                         .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
-                                new String[]{"" + rawId, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE})
+                                new String[]{id, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE})
                         .build());
             }
             // Modify or add a phone
@@ -544,7 +556,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is a new phone so do a DB insert
                     if (phoneId == null) {
                         ContentValues contentValues = new ContentValues();
-                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
                         contentValues.put(ContactsContract.CommonDataKinds.Phone.NUMBER, getJsonString(phone, "value"));
                         contentValues.put(ContactsContract.CommonDataKinds.Phone.TYPE, getPhoneType(getJsonString(phone, "type")));
@@ -579,7 +591,7 @@ public class ContactsX extends CordovaPlugin {
                 ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
                         .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
                                         ContactsContract.Data.MIMETYPE + "=?",
-                                new String[]{"" + rawId, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE})
+                                new String[]{id, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE})
                         .build());
             }
             // Modify or add a email
@@ -590,7 +602,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is a new email so do a DB insert
                     if (emailId == null) {
                         ContentValues contentValues = new ContentValues();
-                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawId);
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
                         contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
                         contentValues.put(ContactsContract.CommonDataKinds.Email.DATA, getJsonString(email, "value"));
                         contentValues.put(ContactsContract.CommonDataKinds.Email.TYPE, getMailType(getJsonString(email, "type")));
@@ -602,7 +614,7 @@ public class ContactsX extends CordovaPlugin {
                     // This is an existing email so do a DB update
                     else {
                         String emailValue = getJsonString(email, "value");
-                        if (!emailValue.isEmpty()) {
+                        if (emailValue != null) {
                             ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
                                     .withSelection(ContactsContract.CommonDataKinds.Email._ID + "=? AND " +
                                                     ContactsContract.Data.MIMETYPE + "=?",
@@ -625,6 +637,72 @@ public class ContactsX extends CordovaPlugin {
             LOG.d(LOG_TAG, "Could not get emails");
         }
 
+        // Modify addresses
+        JSONArray addresses;
+        try {
+            addresses = contact.getJSONArray("addresses");
+            // Delete all the addresses
+            if (addresses.length() == 0) {
+                ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                        .withSelection(ContactsContract.Data.RAW_CONTACT_ID + "=? AND " +
+                                        ContactsContract.Data.MIMETYPE + "=?",
+                                new String[]{id, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE})
+                        .build());
+            }
+            // Modify or add a address
+            else {
+                for (int i = 0; i < addresses.length(); i++) {
+                    JSONObject address = (JSONObject) addresses.get(i);
+                    String addressId = getJsonString(address, "id");
+                    // This is a new email so do a DB insert
+                    if (addressId == null) {
+                        ContentValues contentValues = new ContentValues();
+                        contentValues.put(ContactsContract.Data.RAW_CONTACT_ID, id);
+                        contentValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE);
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.TYPE, getAddressType(getJsonString(address, "type")));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.LABEL, getJsonString(address, "type"));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.STREET, getJsonString(address, "streetAddress"));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.CITY, getJsonString(address, "locality"));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.REGION, getJsonString(address, "region"));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE, getJsonString(address, "postalCode"));
+                        contentValues.put(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY, getJsonString(address, "country"));
+
+                        ops.add(ContentProviderOperation.newInsert(
+                                ContactsContract.Data.CONTENT_URI).withValues(contentValues).build());
+                    }
+                    // This is an existing address so do a DB update
+                    else {
+                        if (getJsonString(address, "streetAddress") != null
+                                || getJsonString(address, "locality") != null
+                                || getJsonString(address, "region") != null
+                                || getJsonString(address, "postalCode") != null
+                                || getJsonString(address, "country") != null) {
+                            ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                                    .withSelection(ContactsContract.CommonDataKinds.StructuredPostal._ID + "=? AND " +
+                                                    ContactsContract.Data.MIMETYPE + "=?",
+                                            new String[]{addressId, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE})
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.TYPE, getAddressType(getJsonString(address, "type")))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.LABEL, getJsonString(address, "type"))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.STREET, getJsonString(address, "streetAddress"))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.CITY, getJsonString(address, "locality"))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.REGION, getJsonString(address, "region"))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE, getJsonString(address, "postalCode"))
+                                    .withValue(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY, getJsonString(address, "country"))
+                                    .build());
+                        } else {
+                            ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+                                    .withSelection(ContactsContract.CommonDataKinds.StructuredPostal._ID + "=? AND " +
+                                                    ContactsContract.Data.MIMETYPE + "=?",
+                                            new String[]{addressId, ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE})
+                                    .build());
+                        }
+                    }
+                }
+            }
+        } catch (JSONException e) {
+            LOG.d(LOG_TAG, "Could not get addresses");
+        }
+
         boolean retVal = true;
         //Modify contact
         try {
@@ -636,7 +714,7 @@ public class ContactsX extends CordovaPlugin {
 
         // if the save was a success return the contact ID
         if (retVal) {
-            return rawId;
+            return id;
         } else {
             return null;
         }
@@ -702,7 +780,7 @@ public class ContactsX extends CordovaPlugin {
     }
 
     // Helper
-
+    @Nullable
     private String getJsonString(JSONObject obj, String property) {
         String value = null;
         try {
@@ -712,7 +790,12 @@ public class ContactsX extends CordovaPlugin {
         } catch (JSONException e) {
             LOG.d(LOG_TAG, "Could not get = " + e.getMessage());
         }
-        return value;
+
+        if (value != null) {
+            return value.isEmpty() ? null : value;
+        }
+
+        return null;
     }
 
     /**
@@ -754,6 +837,46 @@ public class ContactsX extends CordovaPlugin {
                 stringType = "mobile";
                 break;
             case ContactsContract.CommonDataKinds.Email.TYPE_OTHER:
+            default:
+                stringType = "other";
+                break;
+        }
+        return stringType;
+    }
+
+    /**
+     * Converts a string from the W3C Contact API to it's Android int value.
+     */
+    private int getAddressType(String string) {
+        int type = ContactsContract.CommonDataKinds.StructuredPostal.TYPE_OTHER;
+        if (string != null) {
+            String lowerType = string.toLowerCase(Locale.getDefault());
+
+            switch (lowerType) {
+                case "home":
+                    return ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME;
+                case "work":
+                    return ContactsContract.CommonDataKinds.StructuredPostal.TYPE_WORK;
+                case "other":
+                    return ContactsContract.CommonDataKinds.StructuredPostal.TYPE_OTHER;
+            }
+        }
+        return type;
+    }
+
+    /**
+     * getPhoneType converts an Android mail type into a string
+     */
+    private String getAddressType(int type) {
+        String stringType;
+        switch (type) {
+            case ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME:
+                stringType = "home";
+                break;
+            case ContactsContract.CommonDataKinds.StructuredPostal.TYPE_WORK:
+                stringType = "work";
+                break;
+            case ContactsContract.CommonDataKinds.StructuredPostal.TYPE_OTHER:
             default:
                 stringType = "other";
                 break;
@@ -809,5 +932,14 @@ public class ContactsX extends CordovaPlugin {
             }
         }
         return type;
+    }
+
+    private Contacts getContactsFactory() {
+        if (contactsFactory == null) {
+            contactsFactory = ContactsFactory
+                    .create(cordova.getContext());
+        }
+
+        return contactsFactory;
     }
 }

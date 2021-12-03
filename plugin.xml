@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin id="cordova-plugin-contacts-x" version="2.0.3" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+<plugin id="cordova-plugin-contacts-x" version="2.0.4" xmlns="http://apache.org/cordova/ns/plugins/1.0">
     <name>ContactsX</name>
     <description>Cordova Plugins for managing contacts</description>
 
@@ -7,6 +7,12 @@
     <issue>https://github.com/EinfachHans/cordova-plugin-contacts-x/issues</issue>
 
     <license>MIT</license>
+
+    <engines>
+        <engine name="cordova" version=">=9.0.0" />
+        <engine name="cordova-android" version=">=10.0.0" />
+        <engine name="cordova-ios" version=">=9.0.0" />
+    </engines>
 
     <js-module name="ContactsX" src="www/contactsX.js">
         <clobbers target="window.ContactsX"/>
@@ -27,6 +33,7 @@
         <source-file src="src/android/ContactsX.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXErrorCodes.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXFindOptions.java" target-dir="src/de/einfachhans/ContactsX"/>
+        <framework src="src/android/build.gradle" custom="true" type="gradleReference"/>
     </platform>
     <platform name="ios">
         <config-file parent="/*" target="config.xml">
