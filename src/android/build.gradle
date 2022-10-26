@@ -1,7 +1,3 @@
-repositories{
-    maven { url "https://jitpack.io" }
-}
-
 dependencies {
-    implementation 'com.github.vestrel00:contacts-android:0.1.7'
+    implementation(name:'contacts-android_core_0.2.4', ext:'aar')
 }

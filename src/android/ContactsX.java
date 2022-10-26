@@ -166,7 +166,7 @@ public class ContactsX extends CordovaPlugin {
         for (Contact contact : contacts) {
             JSONObject jsContact = new JSONObject();
 
-            jsContact.put("id", contact.getId().toString());
+            jsContact.put("id", contact.getId());
             if (options.displayName) {
                 String displayName = contact.getDisplayNamePrimary();
                 jsContact.put("displayName", displayName);
@@ -218,7 +218,7 @@ public class ContactsX extends CordovaPlugin {
             for (Phone phoneNumber : rawContact.getPhones()) {
                 JSONObject phoneNumberObj = new JSONObject();
                 try {
-                    phoneNumberObj.put("id", phoneNumber.getId().toString());
+                    phoneNumberObj.put("id", phoneNumber.getId());
                     phoneNumberObj.put("value", phoneNumber.getNumber());
                     phoneNumberObj.put("type", getPhoneType(phoneNumber.getType().getValue()));
                     phoneNumbers.put(phoneNumberObj);
@@ -238,7 +238,7 @@ public class ContactsX extends CordovaPlugin {
             for (Email email : rawContact.getEmails()) {
                 JSONObject emailObj = new JSONObject();
                 try {
-                    emailObj.put("id", email.getId().toString());
+                    emailObj.put("id", email.getId());
                     emailObj.put("value", email.getAddress());
                     emailObj.put("type", getMailType(email.getType().getValue()));
                     emails.put(emailObj);
@@ -258,7 +258,7 @@ public class ContactsX extends CordovaPlugin {
             for (Address address : rawContact.getAddresses()) {
                 JSONObject addressObj = new JSONObject();
                 try {
-                    addressObj.put("id", address.getId().toString());
+                    addressObj.put("id", address.getId());
                     addressObj.put("type", getAddressType(address.getType().getValue()));
                     addressObj.put("streetAddress", address.getStreet());
                     addressObj.put("locality", address.getCity());
@@ -738,9 +738,10 @@ public class ContactsX extends CordovaPlugin {
                 ContactsContract.Contacts._ID + " = ?",
                 new String[] { id }, null);
 
-        if (cursor.getCount() == 1) {
+        int lookUpKey = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY);
+        if (cursor.getCount() == 1 && lookUpKey > -1) {
             cursor.moveToFirst();
-            String lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
+            String lookupKey = cursor.getString(lookUpKey);
             Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
             result = this.cordova.getActivity().getContentResolver().delete(uri, null, null);
         } else {
