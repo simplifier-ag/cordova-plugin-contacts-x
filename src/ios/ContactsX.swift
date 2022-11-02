@@ -1,9 +1,11 @@
 import Contacts
 import ContactsUI
+import PhoneNumberKit
 
 @objc(ContactsX) class ContactsX : CDVPlugin, CNContactPickerDelegate {
 
     var _callbackId: String?
+    static var _PhoneNumberKitInstance: PhoneNumberKit? = nil;
 
     @objc(pluginInitialize)
     override func pluginInitialize() {
@@ -67,6 +69,9 @@ import ContactsUI
         }
         if(options.addresses) {
             keysToFetch.append(CNContactPostalAddressesKey);
+		}
+        if(options.organizationName){
+            keysToFetch.append(CNContactOrganizationNameKey)
         }
         return keysToFetch;
     }
@@ -153,6 +158,9 @@ import ContactsUI
         if(contact.familyName != nil) {
             newContact.familyName = contact.familyName!;
         }
+        if(contact.organizationName != nil) {
+            newContact.organizationName = contact.organizationName!;
+        }
         if(contact.phoneNumbers != nil) {
             newContact.phoneNumbers = contact.phoneNumbers!.map { (ob: ContactXValueTypeOptions) -> CNLabeledValue<CNPhoneNumber> in
                 return CNLabeledValue<CNPhoneNumber>(label: ContactsX.mapStringToLabel(string: ob.type), value: CNPhoneNumber(stringValue: ob.value));
@@ -206,6 +214,9 @@ import ContactsUI
         }
         if(contact.familyName != nil) {
             editContact.familyName = contact.familyName!;
+        }
+        if(contact.organizationName != nil) {
+            editContact.organizationName = contact.organizationName!;
         }
         if(contact.phoneNumbers != nil) {
             if(contact.phoneNumbers?.count == 0) {
@@ -431,6 +442,13 @@ import ContactsUI
         default:
             return "other";
         }
+    }
+    
+    static func getPhoneNumberKitInstance() -> PhoneNumberKit {
+        if(ContactsX._PhoneNumberKitInstance == nil){
+            ContactsX._PhoneNumberKitInstance = PhoneNumberKit();
+        }
+        return ContactsX._PhoneNumberKitInstance!;
     }
 }
 

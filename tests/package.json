@@ -1,0 +1,14 @@
+{
+  "name": "cordova-plugin-contacts-x-tests",
+  "version": "2.2.2",
+  "description": "",
+  "cordova": {
+    "id": "cordova-plugin-contacts-x-tests",
+    "platforms": []
+  },
+  "keywords": [
+    "ecosystem:cordova"
+  ],
+  "author": "",
+  "license": "Apache 2.0"
+}

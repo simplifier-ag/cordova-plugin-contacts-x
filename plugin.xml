@@ -7,7 +7,6 @@
     <issue>https://github.com/EinfachHans/cordova-plugin-contacts-x/issues</issue>
 
     <license>MIT</license>
-
     <engines>
         <engine name="cordova" version=">=9.0.0" />
         <engine name="cordova-android" version=">=10.0.0" />
@@ -52,5 +51,8 @@
         </config-file>
 
         <dependency id="cordova-plugin-add-swift-support" version="2.0.2"/>
+		<pods use-frameworks="true">
+			<pod name="PhoneNumberKit" spec="~> 3.3" />
+		</pods>
     </platform>
 </plugin>

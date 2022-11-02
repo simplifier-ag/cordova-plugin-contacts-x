@@ -1,6 +1,7 @@
 declare module 'cordova-plugin-contacts-x' {
   
   type ContactType = 'home' |'work' | 'mobile' | 'other';
+  type AddressType = 'home' | 'work' | 'other' | 'custom';
 
   interface ContactXPhoneNumber {
     id?: string;
@@ -30,6 +31,41 @@ declare module 'cordova-plugin-contacts-x' {
     value: string;
   }
 
+  interface ContactXAdress {
+	id?: number;
+
+	/**
+	 * type of address
+	 */
+	type?: AddressType;
+
+	/**
+	 * street name
+	 */
+	street?: string;
+
+	/**
+	 * city name
+	 */
+	city?: string;
+
+	/**
+	 * region code of country
+	 */
+	region?: string;
+
+	/**
+	 * postal code / zip code
+	 */
+	postCode?: string;
+
+	/**
+	 * full country name
+	 */
+	country?: string;
+
+  }
+
   interface ContactX {
     id?: string;
     rawId?: string;
@@ -55,6 +91,11 @@ declare module 'cordova-plugin-contacts-x' {
     familyName?: string;
 
     /**
+     * organization name of the contact
+     */
+    organizationName?: string;
+
+    /**
      * unformatted phone-numbers of the contact
      */
     phoneNumbers?: ContactXPhoneNumber[];
@@ -63,5 +104,11 @@ declare module 'cordova-plugin-contacts-x' {
      * unformatted emails of the contact
      */
     emails?: ContactXEmail[];
+
+	/**
+	 * adresses of the contact
+	 */
+	addresses?: ContactXAdress[];
+
   }
 }

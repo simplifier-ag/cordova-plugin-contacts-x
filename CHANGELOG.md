@@ -1,4 +1,25 @@
-# Changelog
+### [2.2.2] (2022-11-02)
+- merge with original repo and update to base version 2.1.1
+- updated to latest contacts-android lib 0.2.4 and added lib to this repo since jitpack was down several times
+- updated typescript declarations with addresses
+- removed build configs from build.gradle since it should be defined by platform
+- renamed some address fields (streetAddress -> street, locality -> city, postalCode -> postCode)
+- added manuel and auto tests for cordova-test-framework (https://github.com/apache/cordova-plugin-test-framework#tldr-try-it)
+
+### [2.1.1](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.1.0...V2.1.1) (2022-03-13)
+
+
+### Bug Fixes
+
+* webview no longer gets removed ([#25](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/25)) ([b5aefa8](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/b5aefa8df94510e5ca0e3b2a03df8c9b842a89b6))
+
+## [2.1.0](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.0.3...V2.1.0) (2022-02-17)
+
+
+### Features
+
+* add baseCountryCode option for normalizing phonenumbers ([#21](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/21)) ([36e50ff](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/36e50ff3ecf80f663259d31d1a8601ea50551212))
+* Add support for organizationName ([#19](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/19)) ([d6e45c4](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/d6e45c40c1b7d85a26d4269b8e7fe65e27696d5c))
 
 # 2.0.3
 - Rename definition File to work on case-sensitive file system [#11](https://github.com/EinfachHans/cordova-plugin-contacts-x/pull/11)

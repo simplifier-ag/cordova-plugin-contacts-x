@@ -4,3 +4,6 @@
 .idea
 .iml
 /cordova-plugin-contacts-x.iml
+
+node_modules
+package-lock.json

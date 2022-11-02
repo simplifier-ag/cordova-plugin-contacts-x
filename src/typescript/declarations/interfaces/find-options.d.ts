@@ -7,6 +7,7 @@ declare module 'cordova-plugin-contacts-x' {
     familyName?: boolean;
     phoneNumbers?: boolean;
     emails?: boolean;
+	addresses?: boolean;
   }
 
   interface FindOptions {

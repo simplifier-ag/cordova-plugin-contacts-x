@@ -1,3 +1,30 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.4.1'
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://maven.google.com"
+    }
+}
+
+allprojects {
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+    }
+}
+
 dependencies {
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.2.0'
     implementation(name:'contacts-android_core_0.2.4', ext:'aar')
 }
