@@ -49,29 +49,20 @@ class ContactX {
     }
 
     func getJson() -> NSDictionary {
-
-        var phoneNumbers: [NSDictionary] = [];
-        if(options.phoneNumbers) {
-            phoneNumbers = self.getPhoneNumbers();
-        }
-
-        var emails: [NSDictionary] = [];
-        if(options.emails) {
-            emails = self.getEmailAddresses();
-        }
         
-        var addresses: [NSDictionary] = [];
-        if(options.addresses) {
-            addresses = self.getAddresses();
-        }
-
         var result: [String : Any] = [
-            "id": self.contact.identifier,
-            "phoneNumbers": phoneNumbers,
-            "emails": emails,
-            "addresses": addresses
+            "id": self.contact.identifier
         ];
 
+        if(options.phoneNumbers) {
+            result["phoneNumbers"] = self.getPhoneNumbers();
+        }
+        if(options.emails) {
+            result["firstName"] = self.getEmailAddresses();
+        }
+        if(options.addresses) {
+            result["addresses"] = self.getAddresses();
+        }
         if(options.firstName) {
             result["firstName"] = self.contact.givenName;
         }

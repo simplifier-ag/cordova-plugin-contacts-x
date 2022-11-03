@@ -46,6 +46,7 @@ class ContactXOptions {
     var phoneNumbers: [ContactXValueTypeOptions]? = nil;
     var emails: [ContactXValueTypeOptions]? = nil;
     var addresses: [ContactXAddressOptions]? = nil
+    var baseCountryCode: String? = nil
     
     init(options: NSDictionary?) {
         if(options != nil) {
@@ -66,6 +67,7 @@ class ContactXOptions {
             if(addressArray != nil) {
                 addresses = self.parseAddresses(array: addressArray!);
             }
+            baseCountryCode = options?.value(forKey: "baseCountryCode") as? String
         }
     }
     
@@ -96,10 +98,10 @@ class ContactXOptions {
         for addressObject in array {
             let finalAddress = ContactXAddressOptions.init(options: addressObject);
             if(finalAddress.type != ""
-               && (finalAddress.streetAddress != ""
-                   || finalAddress.locality != ""
+               && (finalAddress.street != ""
+                   || finalAddress.city != ""
                    || finalAddress.region != ""
-                   || finalAddress.postalCode != ""
+                   || finalAddress.postCode != ""
                    || finalAddress.country != "")) {
                 addresses.append(finalAddress);
             }
@@ -123,19 +125,19 @@ class ContactXValueTypeOptions {
 class ContactXAddressOptions {
     var id: String? = nil;
     var type: String;
-    var streetAddress: String;
-    var locality: String;
+    var street: String;
+    var city: String;
     var region: String;
-    var postalCode: String;
+    var postCode: String;
     var country: String;
     
     init(options: NSDictionary) {
         id = options.value(forKey: "id") as? String;
         type = options.value(forKey: "type") as? String ?? "";
-        streetAddress = options.value(forKey: "streetAddress") as? String ?? "";
-        locality = options.value(forKey: "locality") as? String ?? "";
+        street = options.value(forKey: "street") as? String ?? "";
+        city = options.value(forKey: "city") as? String ?? "";
         region = options.value(forKey: "region") as? String ?? "";
-        postalCode = options.value(forKey: "postalCode") as? String ?? "";
+        postCode = options.value(forKey: "postCode") as? String ?? "";
         country = options.value(forKey: "country") as? String ?? "";
     }
 }

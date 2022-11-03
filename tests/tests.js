@@ -327,7 +327,7 @@ exports.defineManualTests = function (contentEl, createActionButton) {
 		'Expected result: Opens the system contact picker and lists fields' +
 
 		'</div><div id="deleteId"></div>' +
-		'</div><input type="number" id="deleteInput"/></div>' +
+		'</div><input type="text" id="deleteInput"/></div>' +
 		'Expected result: Deletes predefined contact by ID'
 
 	createActionButton(

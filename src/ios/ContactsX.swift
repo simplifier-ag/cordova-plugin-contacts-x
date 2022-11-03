@@ -127,7 +127,7 @@ import PhoneNumberKit
             let retId: String?;
             
             if let id = contactOptions.id {
-                if self.findById(id: id) == nil {
+                if self.findById(id: id, baseCountryCode: contactOptions.baseCountryCode) == nil {
                     self.returnError(error: ErrorCodes.NotFound)
                     return
                 }
@@ -137,7 +137,7 @@ import PhoneNumberKit
             }
 
             if(retId != nil) {
-                let contact = self.findById(id: retId!);
+                let contact = self.findById(id: retId!, baseCountryCode: contactOptions.baseCountryCode);
                 if(contact != nil) {
                     let result:CDVPluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: contact?.getJson()  as! [String : Any]);
                     self.commandDelegate.send(result, callbackId: self._callbackId)
@@ -174,10 +174,10 @@ import PhoneNumberKit
         if(contact.addresses != nil) {
             newContact.postalAddresses = contact.addresses!.map{ (ob: ContactXAddressOptions) -> CNLabeledValue<CNPostalAddress> in
                 let postalAddress = CNMutablePostalAddress();
-                postalAddress.street = ob.streetAddress;
-                postalAddress.city = ob.locality;
+                postalAddress.street = ob.street;
+                postalAddress.city = ob.city;
                 postalAddress.state = ob.region;
-                postalAddress.postalCode = ob.postalCode;
+                postalAddress.postalCode = ob.postCode;
                 postalAddress.country = ob.country;
                 
                 return CNLabeledValue<CNPostalAddress>(label: ContactsX.mapStringToLabel(string: ob.type), value: postalAddress);
@@ -200,7 +200,7 @@ import PhoneNumberKit
     }
 
     func modifyContact(contact: ContactXOptions) -> String? {
-        let existingContact = self.findById(id: contact.id!);
+        let existingContact = self.findById(id: contact.id!, baseCountryCode: contact.baseCountryCode);
         
         guard let editContact = existingContact?.contact.mutableCopy() as? CNMutableContact else {
             return nil
@@ -260,10 +260,10 @@ import PhoneNumberKit
                 var newAddresses: [CNLabeledValue<CNPostalAddress>] = [];
                 outer: for newAddress in contact.addresses! {
                     let tmpAddress = CNMutablePostalAddress();
-                    tmpAddress.street = newAddress.streetAddress;
-                    tmpAddress.city = newAddress.locality;
+                    tmpAddress.street = newAddress.street;
+                    tmpAddress.city = newAddress.city;
                     tmpAddress.state = newAddress.region;
-                    tmpAddress.postalCode = newAddress.postalCode;
+                    tmpAddress.postalCode = newAddress.postCode;
                     tmpAddress.country = newAddress.country;
 
                     for address in editContact.postalAddresses {
@@ -294,13 +294,14 @@ import PhoneNumberKit
         }
     }
 
-    func findById(id: String) -> ContactX? {
+    func findById(id: String, baseCountryCode: String?) -> ContactX? {
         let options = ContactsXOptions.init(options: [
             "fields": [
                 "phoneNumbers": true,
                 "emails": true,
                 "addresses": true
-            ]
+            ],
+            "baseCountryCode": baseCountryCode ?? nil
         ]);
         let keysToFetch = self.getKeysToFetch(options: options);
         let predicate = CNContact.predicateForContacts(withIdentifiers: [id]);
@@ -331,7 +332,7 @@ import PhoneNumberKit
                 self.returnError(error: ErrorCodes.WrongJsonObject);
                 return;
             }
-            let contact = self.findById(id: id!);
+            let contact = self.findById(id: id!, baseCountryCode: nil);
             if(contact == nil) {
                 self.returnError(error: ErrorCodes.UnknownError);
                 return;
