@@ -1,10 +1,10 @@
-### [2.2.2] (2022-11-02)
+### [2.2.0] (2022-11-02)
 - merge with original repo and update to base version 2.1.1
 - updated to latest contacts-android lib 0.2.4 and added lib to this repo since jitpack was down several times
 - updated typescript declarations with addresses
 - removed build configs from build.gradle since it should be defined by platform
 - renamed some address fields (streetAddress -> street, locality -> city, postalCode -> postCode)
-- added manuel and auto tests for cordova-test-framework (https://github.com/apache/cordova-plugin-test-framework#tldr-try-it)
+- added manual and auto tests for cordova-test-framework (https://github.com/apache/cordova-plugin-test-framework#tldr-try-it)
 
 ### [2.1.1](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.1.0...V2.1.1) (2022-03-13)
 
