@@ -1,4 +1,24 @@
-# Changelog
+### [2.1.2](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.1.1...V2.1.2) (2023-05-04)
+
+
+### Bug Fixes
+
+* **ios:** declare error codes enum within main class ([1d83826](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/1d83826753edd6b81009012699631eb4aaeb0cd3))
+
+### [2.1.1](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.1.0...V2.1.1) (2022-03-13)
+
+
+### Bug Fixes
+
+* webview no longer gets removed ([#25](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/25)) ([b5aefa8](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/b5aefa8df94510e5ca0e3b2a03df8c9b842a89b6))
+
+## [2.1.0](https://github.com/EinfachHans/cordova-plugin-contacts-x/compare/V2.0.3...V2.1.0) (2022-02-17)
+
+
+### Features
+
+* add baseCountryCode option for normalizing phonenumbers ([#21](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/21)) ([36e50ff](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/36e50ff3ecf80f663259d31d1a8601ea50551212))
+* Add support for organizationName ([#19](https://github.com/EinfachHans/cordova-plugin-contacts-x/issues/19)) ([d6e45c4](https://github.com/EinfachHans/cordova-plugin-contacts-x/commit/d6e45c40c1b7d85a26d4269b8e7fe65e27696d5c))
 
 # 2.0.3
 - Rename definition File to work on case-sensitive file system [#11](https://github.com/EinfachHans/cordova-plugin-contacts-x/pull/11)

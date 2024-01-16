@@ -6,6 +6,7 @@ import android.accounts.AccountManager;
 import android.app.Activity;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.OperationApplicationException;
@@ -16,6 +17,11 @@ import android.provider.ContactsContract;
 
 import androidx.annotation.Nullable;
 
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+
+import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.LOG;
@@ -57,6 +63,8 @@ public class ContactsX extends CordovaPlugin {
 
     public static final int REQ_CODE_PERMISSIONS = 0;
     public static final int REQ_CODE_PICK = 2;
+
+    private PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
 
     private Contacts contactsFactory = null;
 
@@ -155,7 +163,59 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
-    private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
+    private ArrayList<String> getProjection(ContactsXFindOptions options) {
+        ArrayList<String> projection = new ArrayList<>();
+        projection.add(ContactsContract.Data.MIMETYPE);
+        projection.add(ContactsContract.Contacts._ID);
+        projection.add(ContactsContract.Data.CONTACT_ID);
+        projection.add(ContactsContract.Data.RAW_CONTACT_ID);
+        projection.add(ContactsContract.CommonDataKinds.Contactables.DATA);
+
+        if (options.displayName) {
+            projection.add(ContactsContract.Contacts.DISPLAY_NAME);
+        }
+        if (options.firstName) {
+            projection.add(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME);
+        }
+        if (options.middleName) {
+            projection.add(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME);
+        }
+        if (options.familyName) {
+            projection.add(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME);
+        }
+        if (options.emails) {
+            projection.add(ContactsContract.CommonDataKinds.Email._ID);
+            projection.add(ContactsContract.CommonDataKinds.Email.DATA);
+            projection.add(ContactsContract.CommonDataKinds.Email.TYPE);
+            projection.add(ContactsContract.CommonDataKinds.Email.LABEL);
+        }
+        if (options.organizationName) {
+            projection.add(ContactsContract.CommonDataKinds.Organization.COMPANY);
+        }
+
+        return projection;
+    }
+
+    private ArrayList<String> getSelectionArgs(ContactsXFindOptions options) {
+        ArrayList<String> selectionArgs = new ArrayList<>();
+        if (options.phoneNumbers) {
+            selectionArgs.add(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
+        }
+        if (options.emails) {
+            selectionArgs.add(ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
+        }
+        if (options.firstName || options.middleName || options.familyName) {
+            selectionArgs.add(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE);
+        }
+        if (options.organizationName) {
+            selectionArgs.add(ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE);
+        }
+
+        return selectionArgs;
+    }
+
+	private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
+        // initialize array
         JSONArray jsContacts = new JSONArray();
         List<Contact> contacts = contactQuery.find();
 
@@ -280,6 +340,19 @@ public class ContactsX extends CordovaPlugin {
             Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
             this.cordova.startActivityForResult(this, contactPickerIntent, REQ_CODE_PICK);
         });
+    }
+
+    private String getNormalizedPhoneNumber(String phoneNumber, ContactsXFindOptions options){
+
+        if(options.baseCountryCode != null && phoneNumber != null){
+            try {
+                Phonenumber.PhoneNumber phoneNumberProto = phoneUtil.parse(phoneNumber, options.baseCountryCode);
+                return phoneUtil.format(phoneNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
+            } catch (NumberParseException e) {
+                return "";
+            }
+        }
+        return "";
     }
 
     @Nullable
@@ -425,6 +498,16 @@ public class ContactsX extends CordovaPlugin {
             LOG.d(LOG_TAG, "All \"name\" properties are empty");
         }
 
+        // Add organizationName
+        String organizationName = getJsonString(contact, "organizationName");
+        if(organizationName != null){
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organizationName)
+                    .build());
+        }
+
         //Add phone numbers
         JSONArray phones;
         try {
@@ -534,6 +617,20 @@ public class ContactsX extends CordovaPlugin {
             }
 
             ops.add(builder.build());
+        }
+
+        // Modify organizationName
+        String organizationName = getJsonString(contact, "organizationName");
+        if(organizationName != null){
+            try {
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawId)
+                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organizationName)
+                        .build());
+            } catch (Error error) {
+                LOG.d(LOG_TAG, "Could not set organizationName" + error);
+            }
         }
 
         // Modify phone numbers
