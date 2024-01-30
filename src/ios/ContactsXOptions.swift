@@ -6,6 +6,7 @@ class ContactsXOptions {
     var organizationName: Bool = true;
     var phoneNumbers: Bool = false;
     var emails: Bool = false;
+	var addresses: Bool = false;
     var baseCountryCode : String?? = nil;
 
     init(options: NSDictionary?) {

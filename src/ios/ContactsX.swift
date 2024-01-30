@@ -455,6 +455,7 @@ import PhoneNumberKit
         case UnsupportedAction = 1
         case WrongJsonObject = 2
         case PermissionDenied = 3
+		case CanceledAction = 4
         case NotFound = 5
 		case UnknownError = 10
     }
