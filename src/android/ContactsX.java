@@ -162,57 +162,6 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
-    private ArrayList<String> getProjection(ContactsXFindOptions options) {
-        ArrayList<String> projection = new ArrayList<>();
-        projection.add(ContactsContract.Data.MIMETYPE);
-        projection.add(ContactsContract.Contacts._ID);
-        projection.add(ContactsContract.Data.CONTACT_ID);
-        projection.add(ContactsContract.Data.RAW_CONTACT_ID);
-        projection.add(ContactsContract.CommonDataKinds.Contactables.DATA);
-
-        if (options.displayName) {
-            projection.add(ContactsContract.Contacts.DISPLAY_NAME);
-        }
-        if (options.firstName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME);
-        }
-        if (options.middleName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME);
-        }
-        if (options.familyName) {
-            projection.add(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME);
-        }
-        if (options.emails) {
-            projection.add(ContactsContract.CommonDataKinds.Email._ID);
-            projection.add(ContactsContract.CommonDataKinds.Email.DATA);
-            projection.add(ContactsContract.CommonDataKinds.Email.TYPE);
-            projection.add(ContactsContract.CommonDataKinds.Email.LABEL);
-        }
-        if (options.organizationName) {
-            projection.add(ContactsContract.CommonDataKinds.Organization.COMPANY);
-        }
-
-        return projection;
-    }
-
-    private ArrayList<String> getSelectionArgs(ContactsXFindOptions options) {
-        ArrayList<String> selectionArgs = new ArrayList<>();
-        if (options.phoneNumbers) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE);
-        }
-        if (options.emails) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE);
-        }
-        if (options.firstName || options.middleName || options.familyName) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE);
-        }
-        if (options.organizationName) {
-            selectionArgs.add(ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE);
-        }
-
-        return selectionArgs;
-    }
-
 	private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
         // initialize array
         JSONArray jsContacts = new JSONArray();
