@@ -16,6 +16,10 @@ import android.provider.ContactsContract;
 
 import androidx.annotation.Nullable;
 
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.LOG;
@@ -58,6 +62,8 @@ public class ContactsX extends CordovaPlugin {
 
     public static final int REQ_CODE_PERMISSIONS = 0;
     public static final int REQ_CODE_PICK = 2;
+
+    private PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
 
     private Contacts contactsFactory = null;
 
@@ -253,7 +259,7 @@ public class ContactsX extends CordovaPlugin {
             }
 
             if (options.phoneNumbers) {
-                jsContact.put("phoneNumbers", phoneQuery(contact));
+                jsContact.put("phoneNumbers", phoneQuery(contact, options));
             }
 
             if (options.emails) {
@@ -270,7 +276,7 @@ public class ContactsX extends CordovaPlugin {
         return jsContacts;
     }
 
-   private JSONArray phoneQuery(Contact contact) throws JSONException {
+   private JSONArray phoneQuery(Contact contact, ContactsXFindOptions options) throws JSONException {
         JSONArray phoneNumbers = new JSONArray();
 
         for (RawContact rawContact : contact.getRawContacts()) {
@@ -278,7 +284,9 @@ public class ContactsX extends CordovaPlugin {
                 JSONObject phoneNumberObj = new JSONObject();
                 try {
                     phoneNumberObj.put("id", String.valueOf(phoneNumber.getId()));
-                    phoneNumberObj.put("value", phoneNumber.getNumber());
+                    String phoneValue = phoneNumber.getNumber();
+                    phoneNumberObj.put("value", phoneValue);
+                    phoneNumberObj.put("normalized", getNormalizedPhoneNumber(phoneValue, options));
                     phoneNumberObj.put("type", getPhoneType(phoneNumber.getType().getValue()));
                     phoneNumbers.put(phoneNumberObj);
                 } catch (NullPointerException e) {
@@ -339,6 +347,18 @@ public class ContactsX extends CordovaPlugin {
             Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
             this.cordova.startActivityForResult(this, contactPickerIntent, REQ_CODE_PICK);
         });
+    }
+
+    private String getNormalizedPhoneNumber(String phoneNumber, ContactsXFindOptions options){
+        if(options.baseCountryCode != null && phoneNumber != null){
+            try {
+                Phonenumber.PhoneNumber phoneNumberProto = phoneUtil.parse(phoneNumber, options.baseCountryCode);
+                return phoneUtil.format(phoneNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
+            } catch (NumberParseException e) {
+                return "";
+            }
+        }
+        return "";
     }
 
     @Nullable

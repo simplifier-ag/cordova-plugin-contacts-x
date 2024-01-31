@@ -4,4 +4,5 @@ repositories{
 
 dependencies {
     implementation 'com.github.vestrel00:contacts-android:0.3.1'
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.2.0'
 }
