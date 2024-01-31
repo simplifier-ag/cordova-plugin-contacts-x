@@ -89,16 +89,19 @@ class ContactX {
     }
     
     private func getNormalizedPhoneNumber(phoneNumberString: String) -> String {
-        if(phoneNumberString != "" && self.options.baseCountryCode != nil){
-            do {
-                let phoneNumberCustomDefaultRegion = try ContactsX.getPhoneNumberKitInstance().parse(phoneNumberString, withRegion: self.options.baseCountryCode!!, ignoreType: true);
-                
-                return ContactsX.getPhoneNumberKitInstance().format(phoneNumberCustomDefaultRegion, toType : .e164);
-            }
-            catch {
-                return "";
-            }
-        }
-        return "";
+		guard phoneNumberString.isEmpty, let baseCountryCode = options.baseCountryCode else {
+			return ""
+		}
+		
+		do {
+			let phoneNumberCustomDefaultRegion = try ContactsX
+				.getPhoneNumberKitInstance()
+				.parse(phoneNumberString, withRegion: baseCountryCode, ignoreType: true)
+			
+			return ContactsX.getPhoneNumberKitInstance().format(phoneNumberCustomDefaultRegion, toType : .e164)
+		}
+		catch {
+			return "";
+		}
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-contacts-x",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Cordova Plugins for managing contacts",
   "cordova": {
     "id": "cordova-plugin-contacts-x",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EinfachHans/cordova-plugin-contacts-x.git"
+    "url": "git+https://github.com/simplifier-ag/cordova-plugin-contacts-x.git"
   },
   "keywords": [
     "ecosystem:cordova",
@@ -26,12 +26,12 @@
   "main": "./src/typescript/index.js",
   "types": "./src/typescript/index.d.ts",
   "bugs": {
-    "url": "https://github.com/EinfachHans/cordova-plugin-contacts-x/issues"
+    "url": "https://github.com/simplifier-ag/cordova-plugin-contacts-x/issues"
   },
   "scripts": {
     "doctoc": "doctoc readme.md --github --title '**Table of Content**' --maxlevel 2"
   },
-  "homepage": "https://github.com/EinfachHans/cordova-plugin-contacts-x#readme",
+  "homepage": "https://github.com/simplifier-ag/cordova-plugin-contacts-x#readme",
   "devDependencies": {
     "@commitlint/config-conventional": "13.2.0",
     "@saithodev/semantic-release-backmerge": "1.5.3",

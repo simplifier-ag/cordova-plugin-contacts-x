@@ -785,12 +785,18 @@ public class ContactsX extends CordovaPlugin {
 
     private boolean performDelete(String id) {
         int result = 0;
-        Cursor cursor = this.cordova.getActivity().getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,
+
+        try(Cursor cursor = this.cordova.getActivity().getContentResolver().query(
+                ContactsContract.Contacts.CONTENT_URI,
                 null,
                 ContactsContract.Contacts._ID + " = ?",
-                new String[] { id }, null);
+                new String[] { id },
+                null)) {
+            if (cursor == null || cursor.getCount() != 1) {
+                LOG.d(LOG_TAG, "Could not find contact with ID");
+                return false;
+            }
 
-        if (cursor != null && cursor.getCount() == 1) {
             cursor.moveToFirst();
             int columnIndex = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY);
 
@@ -800,12 +806,8 @@ public class ContactsX extends CordovaPlugin {
                 result = this.cordova.getActivity().getContentResolver().delete(uri, null, null);
             }
 
-            cursor.close();
-        }  else {
-            LOG.d(LOG_TAG, "Could not find contact with ID");
+            return result > 0;
         }
-
-        return result > 0;
     }
 
     private void hasPermission() throws JSONException {
