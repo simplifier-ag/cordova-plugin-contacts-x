@@ -1,9 +1,11 @@
 import Contacts
 import ContactsUI
+import PhoneNumberKit
 
 @objc(ContactsX) class ContactsX : CDVPlugin, CNContactPickerDelegate {
 
     var _callbackId: String?
+    static var _PhoneNumberKitInstance: PhoneNumberKit? = nil;
 
     @objc(pluginInitialize)
     override func pluginInitialize() {
@@ -68,6 +70,9 @@ import ContactsUI
         if(options.addresses) {
             keysToFetch.append(CNContactPostalAddressesKey);
         }
+        if(options.organizationName){
+            keysToFetch.append(CNContactOrganizationNameKey)
+        }
         return keysToFetch;
     }
 
@@ -97,7 +102,7 @@ import ContactsUI
         let result: CDVPluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: contactResult);
         self.commandDelegate.send(result, callbackId: self._callbackId);
     }
-    
+
     func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
         self.returnError(error: ErrorCodes.CanceledAction);
     }
@@ -120,7 +125,7 @@ import ContactsUI
             let contactOptions = ContactXOptions.init(options: tmpContactOptions);
 
             let retId: String?;
-            
+
             if let id = contactOptions.id {
                 if self.findById(id: id) == nil {
                     self.returnError(error: ErrorCodes.NotFound)
@@ -153,6 +158,9 @@ import ContactsUI
         if(contact.familyName != nil) {
             newContact.familyName = contact.familyName!;
         }
+        if(contact.organizationName != nil) {
+            newContact.organizationName = contact.organizationName!;
+        }
         if(contact.phoneNumbers != nil) {
             newContact.phoneNumbers = contact.phoneNumbers!.map { (ob: ContactXValueTypeOptions) -> CNLabeledValue<CNPhoneNumber> in
                 return CNLabeledValue<CNPhoneNumber>(label: ContactsX.mapStringToLabel(string: ob.type), value: CNPhoneNumber(stringValue: ob.value));
@@ -171,7 +179,7 @@ import ContactsUI
                 postalAddress.state = ob.region;
                 postalAddress.postalCode = ob.postalCode;
                 postalAddress.country = ob.country;
-                
+
                 return CNLabeledValue<CNPostalAddress>(label: ContactsX.mapStringToLabel(string: ob.type), value: postalAddress);
             };
         }
@@ -193,7 +201,7 @@ import ContactsUI
 
     func modifyContact(contact: ContactXOptions) -> String? {
         let existingContact = self.findById(id: contact.id!);
-        
+
         guard let editContact = existingContact?.contact.mutableCopy() as? CNMutableContact else {
             return nil
         }
@@ -206,6 +214,9 @@ import ContactsUI
         }
         if(contact.familyName != nil) {
             editContact.familyName = contact.familyName!;
+        }
+        if(contact.organizationName != nil) {
+            editContact.organizationName = contact.organizationName!;
         }
         if(contact.phoneNumbers != nil) {
             if(contact.phoneNumbers?.count == 0) {
@@ -231,7 +242,7 @@ import ContactsUI
                 var newMails: [CNLabeledValue<NSString>] = [];
                 outer: for newMail in contact.emails! {
                     for mail in editContact.emailAddresses {
-                        if(mail.identifier == newMail.id!) {
+                        if(newMail.id != nil && mail.identifier == newMail.id!) {
                             newMails.append(mail.settingLabel(ContactsX.mapStringToLabel(string: newMail.type), value: newMail.value as NSString));
                             continue outer;
                         }
@@ -241,7 +252,7 @@ import ContactsUI
                 editContact.emailAddresses = newMails;
             }
         }
-        
+
         if(contact.addresses != nil) {
             if(contact.addresses!.count == 0) {
                 editContact.postalAddresses = [];
@@ -432,13 +443,20 @@ import ContactsUI
             return "other";
         }
     }
-}
 
-enum ErrorCodes:NSNumber {
-    case UnsupportedAction = 1
-    case WrongJsonObject = 2
-    case PermissionDenied = 3
-    case CanceledAction = 4
-    case NotFound = 5
-    case UnknownError = 10
+    static func getPhoneNumberKitInstance() -> PhoneNumberKit {
+        if(ContactsX._PhoneNumberKitInstance == nil){
+            ContactsX._PhoneNumberKitInstance = PhoneNumberKit();
+        }
+        return ContactsX._PhoneNumberKitInstance!;
+    }
+
+    enum ErrorCodes:NSNumber {
+        case UnsupportedAction = 1
+        case WrongJsonObject = 2
+        case PermissionDenied = 3
+		case CanceledAction = 4
+        case NotFound = 5
+		case UnknownError = 10
+    }
 }

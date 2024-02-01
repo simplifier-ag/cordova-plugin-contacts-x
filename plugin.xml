@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin id="cordova-plugin-contacts-x" version="2.1.2" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+<plugin id="cordova-plugin-contacts-x" version="2.2.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
     <name>ContactsX</name>
     <description>Cordova Plugins for managing contacts</description>
 
@@ -14,9 +14,9 @@
         <engine name="cordova-ios" version=">=6.0.0" />
     </engines>
 
-    <js-module name="ContactsX" src="www/contactsX.js">
-        <clobbers target="window.ContactsX"/>
-    </js-module>
+	<js-module name="ContactsX" src="www/contactsX.js">
+		<clobbers target="window.ContactsX" />
+	</js-module>
     <platform name="android">
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="ContactsX">
@@ -30,10 +30,10 @@
             <uses-permission android:name="android.permission.GET_ACCOUNTS" />
         </config-file>
 
-        <source-file src="src/android/ContactsX.java" target-dir="src/de/einfachhans/ContactsX"/>
+		<framework src="src/android/build.gradle" custom="true" type="gradleReference"/>
+		<source-file src="src/android/ContactsX.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXErrorCodes.java" target-dir="src/de/einfachhans/ContactsX"/>
         <source-file src="src/android/ContactsXFindOptions.java" target-dir="src/de/einfachhans/ContactsX"/>
-        <framework src="src/android/build.gradle" custom="true" type="gradleReference"/>
     </platform>
     <platform name="ios">
         <config-file parent="/*" target="config.xml">
@@ -42,10 +42,17 @@
             </feature>
         </config-file>
         <header-file src="src/ios/ContactsX-Bridging-Header.h" />
-        <source-file src="src/ios/ContactsX.swift"  />
-        <source-file src="src/ios/ContactX.swift"  />
-        <source-file src="src/ios/ContactsXOptions.swift"  />
-
+        <source-file src="src/ios/ContactsX.swift" />
+        <source-file src="src/ios/ContactX.swift" />
+        <source-file src="src/ios/ContactsXOptions.swift" />
+		<podspec>
+			<config>
+				<source url="https://github.com/CocoaPods/Specs.git" />
+			</config>
+			<pods use-frameworks="true">
+				<pod name="PhoneNumberKit" spec="~> 3.7.6 />
+			</pods>
+		</podspec>
         <config-file target="*-Info.plist" parent="NSContactsUsageDescription">
             <string>This app requires access to the contacts to manage them.</string>
         </config-file>

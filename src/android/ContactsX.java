@@ -16,6 +16,10 @@ import android.provider.ContactsContract;
 
 import androidx.annotation.Nullable;
 
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.LOG;
@@ -39,6 +43,7 @@ import contacts.core.entities.Address;
 import contacts.core.entities.Contact;
 import contacts.core.entities.Email;
 import contacts.core.entities.Name;
+import contacts.core.entities.Organization;
 import contacts.core.entities.Phone;
 import contacts.core.entities.RawContact;
 
@@ -57,6 +62,8 @@ public class ContactsX extends CordovaPlugin {
 
     public static final int REQ_CODE_PERMISSIONS = 0;
     public static final int REQ_CODE_PICK = 2;
+
+    private PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
 
     private Contacts contactsFactory = null;
 
@@ -155,7 +162,8 @@ public class ContactsX extends CordovaPlugin {
         });
     }
 
-    private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
+	private JSONArray handleFindResult(Query contactQuery, ContactsXFindOptions options) throws JSONException {
+        // initialize array
         JSONArray jsContacts = new JSONArray();
         List<Contact> contacts = contactQuery.find();
 
@@ -166,7 +174,7 @@ public class ContactsX extends CordovaPlugin {
         for (Contact contact : contacts) {
             JSONObject jsContact = new JSONObject();
 
-            jsContact.put("id", contact.getId().toString());
+            jsContact.put("id", String.valueOf(contact.getId()));
             if (options.displayName) {
                 String displayName = contact.getDisplayNamePrimary();
                 jsContact.put("displayName", displayName);
@@ -190,11 +198,17 @@ public class ContactsX extends CordovaPlugin {
                     }
                 }
 
+                Organization organization = rawContact != null && rawContact.getOrganization() != null
+                        ? rawContact.getOrganization() : null;
+                if (options.organizationName && organization != null) {
+                    String company = rawContact.getOrganization().getCompany();
+                    jsContact.put("organizationName", company);
+                }
             } catch (IllegalArgumentException ignored) {
             }
 
             if (options.phoneNumbers) {
-                jsContact.put("phoneNumbers", phoneQuery(contact));
+                jsContact.put("phoneNumbers", phoneQuery(contact, options));
             }
 
             if (options.emails) {
@@ -211,15 +225,17 @@ public class ContactsX extends CordovaPlugin {
         return jsContacts;
     }
 
-   private JSONArray phoneQuery(Contact contact) throws JSONException {
+   private JSONArray phoneQuery(Contact contact, ContactsXFindOptions options) throws JSONException {
         JSONArray phoneNumbers = new JSONArray();
 
         for (RawContact rawContact : contact.getRawContacts()) {
             for (Phone phoneNumber : rawContact.getPhones()) {
                 JSONObject phoneNumberObj = new JSONObject();
                 try {
-                    phoneNumberObj.put("id", phoneNumber.getId().toString());
-                    phoneNumberObj.put("value", phoneNumber.getNumber());
+                    phoneNumberObj.put("id", String.valueOf(phoneNumber.getId()));
+                    String phoneValue = phoneNumber.getNumber();
+                    phoneNumberObj.put("value", phoneValue);
+                    phoneNumberObj.put("normalized", getNormalizedPhoneNumber(phoneValue, options));
                     phoneNumberObj.put("type", getPhoneType(phoneNumber.getType().getValue()));
                     phoneNumbers.put(phoneNumberObj);
                 } catch (NullPointerException e) {
@@ -238,7 +254,7 @@ public class ContactsX extends CordovaPlugin {
             for (Email email : rawContact.getEmails()) {
                 JSONObject emailObj = new JSONObject();
                 try {
-                    emailObj.put("id", email.getId().toString());
+                    emailObj.put("id", String.valueOf(email.getId()));
                     emailObj.put("value", email.getAddress());
                     emailObj.put("type", getMailType(email.getType().getValue()));
                     emails.put(emailObj);
@@ -258,7 +274,7 @@ public class ContactsX extends CordovaPlugin {
             for (Address address : rawContact.getAddresses()) {
                 JSONObject addressObj = new JSONObject();
                 try {
-                    addressObj.put("id", address.getId().toString());
+                    addressObj.put("id", String.valueOf(address.getId()));
                     addressObj.put("type", getAddressType(address.getType().getValue()));
                     addressObj.put("streetAddress", address.getStreet());
                     addressObj.put("locality", address.getCity());
@@ -280,6 +296,18 @@ public class ContactsX extends CordovaPlugin {
             Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
             this.cordova.startActivityForResult(this, contactPickerIntent, REQ_CODE_PICK);
         });
+    }
+
+    private String getNormalizedPhoneNumber(String phoneNumber, ContactsXFindOptions options){
+        if(options.baseCountryCode != null && phoneNumber != null){
+            try {
+                Phonenumber.PhoneNumber phoneNumberProto = phoneUtil.parse(phoneNumber, options.baseCountryCode);
+                return phoneUtil.format(phoneNumberProto, PhoneNumberUtil.PhoneNumberFormat.E164);
+            } catch (NumberParseException e) {
+                return "";
+            }
+        }
+        return "";
     }
 
     @Nullable
@@ -425,6 +453,16 @@ public class ContactsX extends CordovaPlugin {
             LOG.d(LOG_TAG, "All \"name\" properties are empty");
         }
 
+        // Add organizationName
+        String organizationName = getJsonString(contact, "organizationName");
+        if(organizationName != null){
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organizationName)
+                    .build());
+        }
+
         //Add phone numbers
         JSONArray phones;
         try {
@@ -534,6 +572,20 @@ public class ContactsX extends CordovaPlugin {
             }
 
             ops.add(builder.build());
+        }
+
+        // Modify organizationName
+        String organizationName = getJsonString(contact, "organizationName");
+        if(organizationName != null){
+            try {
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, id)
+                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                        .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organizationName)
+                        .build());
+            } catch (Error error) {
+                LOG.d(LOG_TAG, "Could not set organizationName" + error);
+            }
         }
 
         // Modify phone numbers
@@ -733,23 +785,29 @@ public class ContactsX extends CordovaPlugin {
 
     private boolean performDelete(String id) {
         int result = 0;
-        Cursor cursor = this.cordova.getActivity().getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,
+
+        try(Cursor cursor = this.cordova.getActivity().getContentResolver().query(
+                ContactsContract.Contacts.CONTENT_URI,
                 null,
                 ContactsContract.Contacts._ID + " = ?",
-                new String[] { id }, null);
+                new String[] { id },
+                null)) {
+            if (cursor == null || cursor.getCount() != 1) {
+                LOG.d(LOG_TAG, "Could not find contact with ID");
+                return false;
+            }
 
-        if (cursor.getCount() == 1) {
             cursor.moveToFirst();
-            String lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
-            Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
-            result = this.cordova.getActivity().getContentResolver().delete(uri, null, null);
-        } else {
-            LOG.d(LOG_TAG, "Could not find contact with ID");
+            int columnIndex = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY);
+
+            if (columnIndex >= 0) {
+                String lookupKey = cursor.getString(columnIndex);
+                Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
+                result = this.cordova.getActivity().getContentResolver().delete(uri, null, null);
+            }
+
+            return result > 0;
         }
-
-        cursor.close();
-
-        return result > 0;
     }
 
     private void hasPermission() throws JSONException {
