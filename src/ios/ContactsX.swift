@@ -385,7 +385,7 @@ import PhoneNumberKit
     func hasPermission(completionHandler: @escaping (_ accessGranted: Bool) -> Void, requestIfNotAvailable: Bool = false) {
         let store = CNContactStore();
         switch CNContactStore.authorizationStatus(for: .contacts) {
-                case .authorized:
+                case .authorized, .limited:
                     completionHandler(true)
                 case .denied:
                     completionHandler(false)
